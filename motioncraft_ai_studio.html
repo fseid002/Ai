@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MotionCraft AI Studio - Next-Gen Image-to-Video</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            accent: '#8b5cf6',
+                            glow: '#06b6d4'
+                        },
+                        dark: {
+                            bg: '#090d16',
+                            card: '#111827',
+                            panel: '#1f2937',
+                            border: '#374151'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f3f4f6;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .active-ring {
+            box-shadow: 0 0 0 2px #8b5cf6, 0 0 20px rgba(139, 92, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden selection:bg-brand-accent selection:text-white">
+
+    <!-- TOP HEADER -->
+    <header class="h-16 border-b border-dark-border glass-panel flex items-center justify-between px-6 z-30 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-accent to-brand-glow p-0.5 shadow-lg shadow-brand-accent/20">
+                <div class="w-full h-full bg-dark-bg rounded-[10px] flex items-center justify-center">
+                    <i class="fa-solid font-bold fa-wand-magic-sparkles text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-brand-accent text-lg"></i>
+                </div>
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="font-bold text-lg tracking-tight text-white">MotionCraft <span class="text-xs px-2 py-0.5 rounded-full bg-brand-accent/20 text-brand-accent border border-brand-accent/30">AI STUDIO</span></h1>
+                </div>
+                <p class="text-xs text-gray-400">Transform static photos into hyper-realistic video</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <div class="hidden sm:flex items-center space-x-2 text-xs bg-dark-panel px-3 py-1.5 rounded-lg border border-dark-border">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-gray-300 font-medium">Model Engine:</span>
+                <span class="text-brand-glow font-semibold" id="currentEngineLabel">Luma Dream Machine v2</span>
+            </div>
+
+            <button onclick="toggleSettingsModal(true)" class="px-3 py-1.5 text-xs font-medium bg-dark-panel hover:bg-gray-800 text-gray-200 border border-dark-border rounded-lg flex items-center space-x-2 transition">
+                <i class="fa-solid fa-gear text-brand-accent"></i>
+                <span class="hidden md:inline">API Config</span>
+            </button>
+            <button onclick="triggerToast('Credits refreshed: 250 Tokens available', 'info')" class="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-brand-600 to-brand-accent hover:opacity-90 text-white rounded-lg shadow-md transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-bolt"></i>
+                <span>250 Credits</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN APP LAYOUT -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- LEFT SIDEBAR: INPUT & CONTROLS -->
+        <aside class="w-full md:w-96 lg:w-[420px] border-r border-dark-border glass-panel flex flex-col h-full z-20 shrink-0 overflow-y-auto">
+            <div class="p-5 space-y-6">
+                
+                <!-- 1. SOURCE IMAGE -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <i class="fa-solid fa-image text-brand-500"></i> 1. Source Image
+                        </label>
+                        <button id="clearImgBtn" onclick="resetSourceImage()" class="text-xs text-gray-500 hover:text-rose-400 hidden">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Clear
+                        </button>
+                    </div>
+
+                    <div id="dropzone" class="relative group cursor-pointer border-2 border-dashed border-gray-700 hover:border-brand-accent rounded-xl p-4 bg-dark-bg/60 transition-all text-center flex flex-col items-center justify-center min-h-[160px] overflow-hidden">
+                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                        
+                        <div id="uploadPlaceholder" class="space-y-2">
+                            <div class="w-12 h-12 rounded-full bg-brand-accent/10 text-brand-accent flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-200">Click or drag & drop image</p>
+                                <p class="text-xs text-gray-500 mt-1">PNG, JPG, WebP up to 25MB</p>
+                            </div>
+                            <div class="flex gap-2 justify-center pt-1">
+                                <button onclick="event.stopPropagation(); loadSampleImage('portrait')" class="px-2 py-1 text-[10px] bg-dark-panel hover:bg-gray-700 text-gray-300 rounded border border-gray-700">Sample: Cyberpunk</button>
+                                <button onclick="event.stopPropagation(); loadSampleImage('landscape')" class="px-2 py-1 text-[10px] bg-dark-panel hover:bg-gray-700 text-gray-300 rounded border border-gray-700">Sample: Fantasy</button>
+                            </div>
+                        </div>
+
+                        <div id="imagePreviewContainer" class="hidden relative w-full h-44 rounded-lg overflow-hidden group">
+                            <img id="imagePreview" class="w-full h-full object-cover rounded-lg" alt="Source">
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                                <button onclick="event.stopPropagation(); document.getElementById('fileInput').click()" class="px-3 py-1.5 bg-dark-panel/90 text-xs text-white rounded-lg hover:bg-brand-600 transition">
+                                    <i class="fa-solid fa-arrows-rotate mr-1"></i> Replace
+                                </button>
+                            </div>
+                            <div class="absolute bottom-2 left-2 px-2 py-0.5 bg-black/70 text-[10px] text-gray-300 rounded border border-white/10" id="imgDimensions">1024 x 1024</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. MOTION PROMPT & PRESETS -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <i class="fa-solid fa-terminal text-brand-accent"></i> 2. Motion Prompt & Style
+                        </label>
+                        <button onclick="enhancePromptWithAI()" class="text-[11px] font-medium text-brand-glow hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-sparkles"></i> Magic Enhance
+                        </button>
+                    </div>
+
+                    <textarea id="motionPrompt" rows="3" placeholder="Describe how the scene should move... (e.g., Cinematic zoom, flickering lights, soft breeze)" class="w-full bg-dark-bg border border-dark-border rounded-xl p-3 text-xs text-gray-200 focus:outline-none focus:border-brand-accent transition resize-none placeholder:text-gray-600"></textarea>
+
+                    <div>
+                        <span class="text-[11px] font-medium text-gray-400 block mb-2">Camera Motion Presets</span>
+                        <div class="grid grid-cols-3 gap-2" id="presetGrid"></div>
+                    </div>
+                </div>
+
+                <!-- 3. DIRECTORIAL CONTROLS -->
+                <div class="space-y-4 pt-2 border-t border-dark-border">
+                    <label class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-brand-glow"></i> 3. Directorial Controls
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[11px] text-gray-400 block mb-1">Camera Trajectory</label>
+                            <select id="cameraMotionSelect" class="w-full bg-dark-bg border border-dark-border text-xs rounded-lg p-2 text-gray-200 focus:outline-none">
+                                <option value="pan_right">Pan Right ➔</option>
+                                <option value="pan_left">Pan Left ⬅</option>
+                                <option value="zoom_in" selected>Zoom In 🔍</option>
+                                <option value="zoom_out">Zoom Out 🔍-</option>
+                                <option value="orbit">3D Orbit 🔄</option>
+                                <option value="tilt_up">Tilt Up ⬆</option>
+                                <option value="vertigo">Vertigo Effect 🌪</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-gray-400 block mb-1">Aspect Ratio</label>
+                            <select id="aspectRatioSelect" class="w-full bg-dark-bg border border-dark-border text-xs rounded-lg p-2 text-gray-200 focus:outline-none">
+                                <option value="16:9">16:9 Widescreen</option>
+                                <option value="9:16">9:16 Vertical</option>
+                                <option value="1:1" selected>1:1 Square</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-gray-400">Motion Amplitude</span>
+                                <span id="motionStrengthVal" class="text-brand-glow font-semibold">6.5</span>
+                            </div>
+                            <input type="range" id="motionStrength" min="1" max="10" step="0.5" value="6.5" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-brand-accent" oninput="document.getElementById('motionStrengthVal').innerText = this.value">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-gray-400">Duration (Seconds)</span>
+                                <span id="durationVal" class="text-brand-glow font-semibold">4.0s</span>
+                            </div>
+                            <input type="range" id="durationSlider" min="2" max="10" step="1" value="4" class="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-brand-accent" oninput="document.getElementById('durationVal').innerText = this.value + '.0s'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GENERATE BUTTON -->
+                <div class="pt-4">
+                    <button onclick="startGenerationPipeline()" class="w-full py-3.5 px-4 bg-gradient-to-r from-brand-600 via-brand-accent to-brand-glow hover:opacity-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-brand-accent/25 flex items-center justify-center space-x-2 transition-all">
+                        <i class="fa-solid fa-film"></i>
+                        <span>GENERATE AI VIDEO</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- RIGHT CONTENT AREA -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden bg-dark-bg/40 relative">
+            <div class="flex-1 p-6 flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="absolute w-[500px] h-[500px] bg-brand-accent/10 rounded-full filter blur-[120px] pointer-events-none -z-10"></div>
+
+                <div class="relative w-full max-w-4xl h-[480px] lg:h-[540px] glass-panel rounded-2xl overflow-hidden flex flex-col border border-white/10 shadow-2xl">
+                    <div class="h-10 border-b border-dark-border px-4 flex items-center justify-between text-xs text-gray-400 bg-dark-card/90">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+                            <span class="ml-2 font-mono text-[11px] text-gray-400" id="statusHeader">Status: Ready</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="toggleLoop()" id="loopBtn" title="Toggle Loop" class="hover:text-white transition text-brand-accent"><i class="fa-solid fa-repeat"></i></button>
+                            <button onclick="toggleGridOverlay()" id="gridBtn" title="Toggle Vectors" class="hover:text-white transition text-gray-400"><i class="fa-solid fa-vector-square"></i></button>
+                            <button onclick="resetCanvasView()" title="Reset View" class="hover:text-white transition"><i class="fa-solid fa-expand"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 relative bg-black flex items-center justify-center overflow-hidden" id="canvasContainer">
+                        <canvas id="motionCanvas" class="max-w-full max-h-full object-contain"></canvas>
+
+                        <div id="canvasEmptyState" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-dark-bg/80 backdrop-blur-sm">
+                            <div class="w-16 h-16 rounded-2xl bg-dark-panel border border-dark-border flex items-center justify-center text-brand-accent mb-4 shadow-inner">
+                                <i class="fa-solid fa-video text-2xl animate-pulse"></i>
+                            </div>
+                            <h3 class="text-base font-semibold text-gray-200 mb-1">No AI Video Generated Yet</h3>
+                            <p class="text-xs text-gray-500 max-w-sm">Upload an image and click Generate AI Video to bring your photo to life.</p>
+                        </div>
+
+                        <div id="processingOverlay" class="hidden absolute inset-0 bg-dark-bg/90 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20">
+                            <div class="w-20 h-20 relative mb-6">
+                                <div class="absolute inset-0 rounded-full border-4 border-brand-accent/20"></div>
+                                <div class="absolute inset-0 rounded-full border-4 border-brand-accent border-t-transparent animate-spin"></div>
+                                <div class="absolute inset-0 flex items-center justify-center font-mono font-bold text-sm text-brand-glow" id="processPercent">0%</div>
+                            </div>
+                            <h4 id="processStageTitle" class="text-sm font-semibold text-gray-100 mb-1">Initializing AI Model...</h4>
+                            <p id="processStageSub" class="text-xs text-gray-400 mb-4 font-mono">Loading weights...</p>
+                            <div class="w-64 h-1.5 bg-dark-panel rounded-full overflow-hidden border border-gray-700/50">
+                                <div id="processProgressBar" class="h-full bg-gradient-to-r from-brand-600 via-brand-accent to-brand-glow w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+
+                        <canvas id="vectorOverlayCanvas" class="absolute inset-0 pointer-events-none hidden"></canvas>
+                    </div>
+
+                    <div class="h-14 border-t border-dark-border bg-dark-card/95 px-4 flex items-center justify-between gap-4 z-10">
+                        <button id="playPauseBtn" onclick="togglePlayPause()" class="w-9 h-9 rounded-lg bg-brand-600 hover:bg-brand-500 text-white flex items-center justify-center transition shadow-md">
+                            <i class="fa-solid fa-play text-xs"></i>
+                        </button>
+                        <div class="flex-1 flex items-center gap-3">
+                            <span id="currentTimeLabel" class="text-[11px] font-mono text-gray-400 w-10">0.0s</span>
+                            <div class="flex-1 relative h-2 bg-gray-800 rounded-full cursor-pointer group" id="timelineBar" onclick="seekTimeline(event)">
+                                <div id="timelineProgress" class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-brand-500 to-brand-accent rounded-full w-0"></div>
+                                <div id="timelineHandle" class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow border border-brand-accent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style="left: 0%;"></div>
+                            </div>
+                            <span id="totalTimeLabel" class="text-[11px] font-mono text-gray-400 w-10">4.0s</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="exportMedia('mp4')" class="px-3 py-1.5 text-xs bg-dark-panel hover:bg-gray-700 border border-dark-border text-gray-200 rounded-lg flex items-center space-x-1.5 transition">
+                                <i class="fa-solid fa-download text-brand-glow"></i><span>MP4</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HISTORY GALLERY -->
+            <div class="h-44 border-t border-dark-border glass-panel p-4 flex flex-col shrink-0">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-brand-accent"></i> Session History
+                    </h3>
+                    <span class="text-[11px] text-gray-500" id="historyCount">0 generations</span>
+                </div>
+                <div class="flex-1 flex gap-4 overflow-x-auto pb-2" id="historyContainer">
+                    <div id="historyEmpty" class="w-full flex items-center justify-center text-xs text-gray-600 border border-dashed border-gray-800 rounded-xl">Past generations will appear here.</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- API CONFIG MODAL -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="w-full max-w-lg glass-panel bg-dark-card border border-dark-border rounded-2xl p-6 shadow-2xl relative">
+            <button onclick="toggleSettingsModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="text-base font-bold text-white mb-4">AI Engine API Settings</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-300 font-medium block mb-1">Provider Engine</label>
+                    <select id="apiProviderSelect" onchange="state.currentEngine = this.options[this.selectedIndex].text" class="w-full bg-dark-bg border border-dark-border text-xs rounded-xl p-3 text-gray-200 focus:outline-none">
+                        <option value="luma">Luma Dream Machine v2</option>
+                        <option value="runway">Runway Gen-3 Alpha</option>
+                        <option value="kling">Kling AI Video</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="saveApiSettings()" class="px-5 py-2 text-xs font-semibold bg-brand-accent text-white rounded-xl shadow-lg">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        const MOTION_PRESETS = [
+            { id: 'orbit', label: '3D Orbit', icon: 'fa-rotate-right', prompt: '3D camera orbiting slowly around subject with dynamic depth lighting' },
+            { id: 'pan', label: 'Cinematic Pan', icon: 'fa-video', prompt: 'Smooth horizontal pan across atmospheric landscape' },
+            { id: 'zoom', label: 'Dolly Zoom', icon: 'fa-magnifying-glass-plus', prompt: 'Dramatic dolly zoom effect highlighting central subject' }
+        ];
+
+        const SAMPLE_IMAGES = {
+            portrait: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+            landscape: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80'
+        };
+
+        const state = {
+            sourceImg: null, imgElement: null, motionPrompt: '', cameraMotion: 'zoom_in',
+            motionStrength: 6.5, duration: 4.0, isGenerating: false, isPlaying: false,
+            isLooping: true, showVectors: false, currentTime: 0, history: [],
+            animationFrameId: null, currentEngine: 'Luma Dream Machine v2'
+        };
+
+        let canvas, ctx, vectorCanvas, vectorCtx;
+
+        window.onload = function() {
+            canvas = document.getElementById('motionCanvas');
+            ctx = canvas.getContext('2d');
+            vectorCanvas = document.getElementById('vectorOverlayCanvas');
+            vectorCtx = vectorCanvas.getContext('2d');
+            renderPresets();
+            setupDropzone();
+            window.addEventListener('resize', () => {
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+                vectorCanvas.width = vectorCanvas.parentElement.clientWidth;
+                vectorCanvas.height = vectorCanvas.parentElement.clientHeight;
+            });
+            window.dispatchEvent(new Event('resize'));
+        };
+
+        function renderPresets() {
+            document.getElementById('presetGrid').innerHTML = MOTION_PRESETS.map(p => `
+                <button onclick="selectPreset('${p.id}', '${p.prompt}')" class="p-2.5 bg-dark-bg hover:bg-dark-panel border border-dark-border rounded-xl text-left transition">
+                    <i class="fa-solid ${p.icon} text-brand-accent text-xs mb-1 block"></i>
+                    <span class="text-[11px] font-semibold text-gray-200">${p.label}</span>
+                </button>
+            `).join('');
+        }
+
+        function selectPreset(id, prompt) {
+            document.getElementById('motionPrompt').value = prompt;
+            state.motionPrompt = prompt;
+            triggerToast(`Selected ${id} preset`, 'info');
+        }
+
+        function setupDropzone() {
+            const dropzone = document.getElementById('dropzone');
+            dropzone.onclick = () => document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files[0]) processFile(e.target.files[0]);
+        }
+
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.sourceImg = e.target.result;
+                    state.imgElement = img;
+                    document.getElementById('imagePreview').src = e.target.result;
+                    document.getElementById('uploadPlaceholder').classList.add('hidden');
+                    document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                    document.getElementById('clearImgBtn').classList.remove('hidden');
+                    document.getElementById('canvasEmptyState').classList.add('hidden');
+                    drawFrame(0);
+                    triggerToast('Image loaded successfully!', 'success');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function loadSampleImage(key) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                state.sourceImg = SAMPLE_IMAGES[key];
+                state.imgElement = img;
+                document.getElementById('imagePreview').src = SAMPLE_IMAGES[key];
+                document.getElementById('uploadPlaceholder').classList.add('hidden');
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                document.getElementById('clearImgBtn').classList.remove('hidden');
+                document.getElementById('canvasEmptyState').classList.add('hidden');
+                drawFrame(0);
+                triggerToast('Loaded sample image', 'info');
+            };
+            img.src = SAMPLE_IMAGES[key];
+        }
+
+        function resetSourceImage() {
+            state.sourceImg = null;
+            state.imgElement = null;
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('clearImgBtn').classList.add('hidden');
+            document.getElementById('canvasEmptyState').classList.remove('hidden');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function enhancePromptWithAI() {
+            const input = document.getElementById('motionPrompt');
+            input.value = (input.value ? input.value + ', ' : '') + 'cinematic volumetric lighting, photorealistic depth motion';
+            triggerToast('Enhanced prompt with AI tags', 'success');
+        }
+
+        function startGenerationPipeline() {
+            if (!state.imgElement) {
+                triggerToast('Please upload an image first!', 'error');
+                return;
+            }
+            state.cameraMotion = document.getElementById('cameraMotionSelect').value;
+            state.duration = parseFloat(document.getElementById('durationVal').innerText);
+            state.motionStrength = parseFloat(document.getElementById('motionStrength').value);
+
+            const overlay = document.getElementById('processingOverlay');
+            overlay.classList.remove('hidden');
+            let progress = 0;
+            const timer = setInterval(() => {
+                progress += 25;
+                document.getElementById('processPercent').innerText = `${progress}%`;
+                document.getElementById('processProgressBar').style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(timer);
+                    overlay.classList.add('hidden');
+                    state.history.unshift({ id: Date.now(), imgSrc: state.sourceImg, prompt: document.getElementById('motionPrompt').value, duration: state.duration, camera: state.cameraMotion });
+                    updateHistoryUI();
+                    state.currentTime = 0;
+                    startPlayback();
+                    triggerToast('AI Video generated successfully!', 'success');
+                }
+            }, 500);
+        }
+
+        function drawFrame(time) {
+            if (!ctx || !state.imgElement) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const progress = (time / state.duration) % 1;
+            const scale = 1.0 + (progress * 0.2);
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.scale(scale, scale);
+            ctx.drawImage(state.imgElement, -200, -150, 400, 300);
+            ctx.restore();
+        }
+
+        function startPlayback() {
+            state.isPlaying = true;
+            document.getElementById('playPauseBtn').innerHTML = '<i class="fa-solid fa-pause text-xs"></i>';
+            let last = performance.now();
+            function loop(now) {
+                if (!state.isPlaying) return;
+                state.currentTime += (now - last) / 1000;
+                last = now;
+                if (state.currentTime >= state.duration) state.currentTime = 0;
+                drawFrame(state.currentTime);
+                updateTimelineUI();
+                state.animationFrameId = requestAnimationFrame(loop);
+            }
+            state.animationFrameId = requestAnimationFrame(loop);
+        }
+
+        function pausePlayback() {
+            state.isPlaying = false;
+            cancelAnimationFrame(state.animationFrameId);
+            document.getElementById('playPauseBtn').innerHTML = '<i class="fa-solid fa-play text-xs"></i>';
+        }
+
+        function togglePlayPause() {
+            if (!state.imgElement) return;
+            state.isPlaying ? pausePlayback() : startPlayback();
+        }
+
+        function toggleLoop() {
+            state.isLooping = !state.isLooping;
+            triggerToast(`Looping ${state.isLooping ? 'Enabled' : 'Disabled'}`, 'info');
+        }
+
+        function toggleGridOverlay() {
+            state.showVectors = !state.showVectors;
+            document.getElementById('vectorOverlayCanvas').classList.toggle('hidden');
+        }
+
+        function updateTimelineUI() {
+            const p = state.currentTime / state.duration;
+            document.getElementById('timelineProgress').style.width = `${p * 100}%`;
+            document.getElementById('timelineHandle').style.left = `${p * 100}%`;
+            document.getElementById('currentTimeLabel').innerText = `${state.currentTime.toFixed(1)}s`;
+        }
+
+        function seekTimeline(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            state.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * state.duration;
+            drawFrame(state.currentTime);
+            updateTimelineUI();
+        }
+
+        function resetCanvasView() {
+            state.currentTime = 0;
+            drawFrame(0);
+            updateTimelineUI();
+        }
+
+        function updateHistoryUI() {
+            const container = document.getElementById('historyContainer');
+            document.getElementById('historyCount').innerText = `${state.history.length} generated`;
+            container.innerHTML = state.history.map(item => `
+                <div class="min-w-[120px] w-32 h-full bg-dark-bg border border-dark-border rounded-xl p-2 flex flex-col justify-between shrink-0">
+                    <img src="${item.imgSrc}" class="w-full h-16 object-cover rounded-lg mb-1">
+                    <span class="text-[10px] text-gray-300 truncate">${item.prompt || 'Motion Video'}</span>
+                </div>
+            `).join('');
+        }
+
+        function exportMedia(type) {
+            if (!state.imgElement) return triggerToast('No video to export', 'error');
+            const link = document.createElement('a');
+            link.download = `MotionCraft_Video.${type}`;
+            link.href = canvas.toDataURL();
+            link.click();
+            triggerToast('Export successful!', 'success');
+        }
+
+        function toggleSettingsModal(show) {
+            const modal = document.getElementById('settingsModal');
+            modal.classList.toggle('hidden', !show);
+            setTimeout(() => modal.classList.toggle('opacity-0', !show), 10);
+        }
+
+        function saveApiSettings() {
+            document.getElementById('currentEngineLabel').innerText = state.currentEngine;
+            toggleSettingsModal(false);
+            triggerToast('API Settings saved', 'success');
+        }
+
+        function triggerToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `px-4 py-3 rounded-xl border bg-dark-panel border-dark-border text-gray-200 text-xs font-medium shadow-xl transition-all`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info mr-2 text-brand-glow"></i><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
